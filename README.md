@@ -7,6 +7,7 @@ A Bash script to automatically detect VS Code Dev Containers and set up iptables
 When running VS Code in a virtual machine (e.g., on Proxmox) with Dev Containers, the containers' services (like web apps on port 3000) are typically only accessible within the VM. This script allows you to forward those ports to the VM's host IP, making them accessible from external machines, such as your local iMac.
 
 Example setup:
+
 - iMac → Proxmox host → VM (running VS Code + Dev Container) → Forwarded ports accessible from iMac
 
 ## Features
@@ -14,7 +15,7 @@ Example setup:
 - **Automatic Detection**: Scans running Docker containers for VS Code Dev Container metadata and extracts `forwardPorts`.
 - **Iptables Management**: Creates and manages dedicated iptables chains for port forwarding.
 - **Safety**: Only affects its own rules; preserves existing iptables configurations.
-- **Persistence**: Can be installed as a systemd service for automatic setup on boot.
+- **Persistence**: Can be installed as a systemd service with a timer that checks for new containers every 30 seconds.
 - **Modes**:
   - `--check`: Validate dependencies (iptables, docker, jq).
   - `--dry-run`: Simulate rule generation without applying changes.
@@ -33,6 +34,7 @@ Example setup:
 ## Installation
 
 1. Clone or download the repository:
+
    ```bash
    git clone https://github.com/UK-Jimbo/devcontainer-tunnel.git
    cd devcontainer-tunnel
@@ -48,31 +50,39 @@ Example setup:
 Run as root (sudo) in the directory containing the script.
 
 ### Check Dependencies
+
 ```bash
 sudo ./devcontainer-forward.sh --check
 ```
 
 ### Dry Run (Safe Simulation)
+
 ```bash
 sudo ./devcontainer-forward.sh --dry-run
 ```
 
 ### Apply Rules
+
 ```bash
 sudo ./devcontainer-forward.sh --run
 ```
 
 ### Install as Service (Persistent)
+
 ```bash
 sudo ./devcontainer-forward.sh --install
 ```
 
+This installs a systemd service and timer that automatically checks for new devcontainers every 30 seconds and updates the forwarding rules.
+
 ### Check Status
+
 ```bash
 sudo ./devcontainer-forward.sh --status
 ```
 
 ### Uninstall
+
 ```bash
 sudo ./devcontainer-forward.sh --uninstall
 ```
@@ -115,3 +125,15 @@ Activity is logged to `/var/log/devcontainer-forward.log`.
 - The script only manages its own iptables chains (`DEVCONTAINER_FWD_NAT`, `DEVCONTAINER_FWD_FILTER`).
 - `--uninstall` safely removes only what the script created.
 - Re-running `--run` clears old rules before applying new ones.
+<<<<<<< HEAD
+=======
+
+## License
+
+MIT License (or specify if different).
+
+## Contributing
+
+Feel free to open issues or PRs for improvements!</content>
+<parameter name="filePath">/home/james-griffin/code/devcontainer-tunnel/README.md
+>>>>>>> 758751d (Add systemd timer for automatic 30s checks of devcontainers)

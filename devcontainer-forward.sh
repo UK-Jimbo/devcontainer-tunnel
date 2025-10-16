@@ -15,7 +15,7 @@
 #   --check   : Validate required dependencies only.
 #   --dry-run : Simulate full detection and rule generation. No system changes.
 #   --run     : Apply iptables and NAT rules, showing exactly what was done.
-#   --install : Perform run, then install as a persistent systemd service.
+#   --install : Perform run, then install as a persistent systemd service with 30s timer.
 #   --status  : Show current forwarding status and service state.
 #   --uninstall : Remove the systemd service and clear all rules/files.
 #
@@ -107,12 +107,12 @@ show_status() {
     fi
     echo
     echo "Service status:"
-    if systemctl is-active --quiet devcontainer-forward.service 2>/dev/null; then
-        echo "  Systemd service: Running"
-    elif systemctl is-enabled --quiet devcontainer-forward.service 2>/dev/null; then
-        echo "  Systemd service: Installed (not running)"
+    if systemctl is-active --quiet devcontainer-forward.timer 2>/dev/null; then
+        echo "  Timer: Running (checks every 30s)"
+    elif systemctl is-enabled --quiet devcontainer-forward.timer 2>/dev/null; then
+        echo "  Timer: Installed (not running)"
     else
-        echo "  Systemd service: Not installed"
+        echo "  Timer: Not installed"
     fi
     echo
     echo "Iptables chains: Configured"
@@ -221,25 +221,43 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
-RemainAfterExit=yes
 ExecStart=/usr/local/bin/devcontainer-forward.sh --run
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+    TIMER_FILE="/etc/systemd/system/devcontainer-forward.timer"
+    cat >"$TIMER_FILE" <<EOF
+[Unit]
+Description=Run Devcontainer Forwarding every 30 seconds
+Requires=devcontainer-forward.service
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=30
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
+EOF
+
     chmod 644 "$SERVICE_FILE"
+    chmod 644 "$TIMER_FILE"
     systemctl daemon-reload
-    systemctl enable devcontainer-forward.service
-    systemctl start devcontainer-forward.service
-    log "Service installed and started."
+    systemctl enable devcontainer-forward.timer
+    systemctl start devcontainer-forward.timer
+    log "Service and timer installed and started."
 }
 
 uninstall_service() {
     log "Uninstalling systemd service..."
+    systemctl stop devcontainer-forward.timer 2>/dev/null || true
+    systemctl disable devcontainer-forward.timer 2>/dev/null || true
     systemctl stop devcontainer-forward.service 2>/dev/null || true
     systemctl disable devcontainer-forward.service 2>/dev/null || true
     rm -f "$SERVICE_FILE"
+    rm -f "/etc/systemd/system/devcontainer-forward.timer"
     systemctl daemon-reload
     log "Clearing iptables rules..."
     # Flush the chains
